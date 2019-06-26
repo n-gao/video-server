@@ -1,0 +1,72 @@
+﻿@page "/search"
+@using VideoServer.Shared
+@inject HttpClient Http
+
+<h1>Search</h1>
+
+<EditForm Model="@query" OnValidSubmit="@OnSearchSubmit">
+    <InputText Id="query" bind-Value="@query.Query" /><br />
+
+    <span>Skip:</span>
+    <input type="number" bind="@query.Skip" min="-60" max="60" value="-10" /><br />
+
+    <span>Duration:</span>
+    <input type="number" bind="@query.Duration" min="5" max="60" value="20" /><br />
+
+    <button type="submit">Search</button>
+</EditForm>
+
+
+@if (results == null)
+{
+    <p>Waiting for query...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Thumbnail</th>
+                <th>Episode</th>
+                <th>Text</th>
+                <th>Score</th>
+                <th>Download</th>
+                <th>Video</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var result in results)
+            {
+                <tr>
+                    <td><img class="img-thumbnail" src="api/thumbnail/@result.Season/@result.EpisodeNumber?timestamp=@result.Start" /></td>
+                    <td>@result.Episode <br /> @result.EpisodeTitle</td>
+                    <td>@result.Text</td>
+                    <td>@String.Format("{0:0.##}", result.Score)</td>
+                    <td><a href="api/video/@result.Season/@result.EpisodeNumber?start=@(result.Start+query.Skip)&duration=@query.Duration" target="_blank" download="clip.mkv">Download</a></td>
+                    <td>
+                        @if (result.Stream)
+                        {
+                            <video controls>
+                                <source src="api/video/@result.Season/@result.EpisodeNumber?start=@(result.Start+query.Skip)&duration=@query.Duration" />
+                            </video>
+                        }
+                        else
+                        {
+                            <button onclick="@(() => result.Stream = true)">Stream</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@functions {
+    SearchResult[] results;
+    SearchQuery query = new SearchQuery();
+
+    public async Task OnSearchSubmit()
+    {
+        results = await Http.GetJsonAsync<SearchResult[]>($"api/search?query={query.Query}");
+    }
+}
