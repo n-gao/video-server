@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,13 +10,15 @@ using System.Threading.Tasks;
 
 namespace VideoServer.Server
 {
-    public class VideoStream
+    public class VideoStream : IDisposable
     {
         private byte[] buffer;
 
         public string filePath;
         public float start;
         public float duration;
+
+        private List<IDisposable> disposeables = new List<IDisposable>();
 
         public VideoStream(string filePath, float start, float duration, int bufferSize=4096)
         {
@@ -26,9 +29,12 @@ namespace VideoServer.Server
             this.duration = duration;
         }
 
-        public async Task<MemoryStream> ReadToStream()
+        public async Task<Stream> ReadToStream()
         {
-            var result = new MemoryStream();
+            var id = Guid.NewGuid();
+            var path = $"/{id}";
+            var memoryFile = MemoryMappedFile.CreateNew(path, 1024 * 128, MemoryMappedFileAccess.ReadWrite);
+            disposeables.Add(memoryFile);
             using (var p = new Process())
             {
                 if (Environment.OSVersion.Platform == PlatformID.Win32NT)
@@ -43,28 +49,19 @@ namespace VideoServer.Server
                 var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
                 var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-                //p.StartInfo.Arguments = $"-v quiet -i {filePath} -c:v libx264 -ss {startS} -t {durationS} -f matroska pipe:";
-                p.StartInfo.Arguments = $"-v quiet -i {filePath} -c copy -ss {startS} -t {durationS} -f matroska pipe:";
-                Console.Write(p.StartInfo.Arguments);
+                p.StartInfo.Arguments = $"-v quiet -i {filePath} -c:v libx264 -ss {startS} -t {durationS} -f mp4 -y {path}";
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.RedirectStandardOutput = true;
                 p.Start();
 
-                int read = 1;
-                while (read > 0)
-                {
-                    read = await p.StandardOutput.BaseStream.ReadAsync(buffer, 0, buffer.Length);
-                    if (read > 0)
-                    {
-                        await result.WriteAsync(buffer, 0, read);
-                    }
-                }
+                await Task.Run(() => p.WaitForExit());
             }
-            result.Position = 0;
+            var result = new FileStream(path, FileMode.Open);
+            disposeables.Add(result);
             return result;
         }
 
-        public FileStream GetThumbnail()
+        public async Task<FileStream> GetThumbnail()
         {
             Directory.CreateDirectory(".cache");
             var sha256 = SHA256.Create();
@@ -90,13 +87,22 @@ namespace VideoServer.Server
 
                     var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-                    p.StartInfo.Arguments = $"-v quiet -i \"{filePath}\" -an -ss {startS} -vframes 1 -f image2pipe \"{cachePath}\"";
+                    p.StartInfo.Arguments = $"-ss {startS} -v quiet -i \"{filePath}\" -an -vframes 1 -f image2pipe \"{cachePath}\"";
                     p.Start();
-                    p.WaitForExit();
+                    
+                    await Task.Run(() => p.WaitForExit());
                 }
             }
+            var result = new FileStream(cachePath, FileMode.Open);
+            disposeables.Add(result);
+            return result;
+        }
 
-            return new FileStream(cachePath, FileMode.Open);
+        public void Dispose()
+        {
+            foreach(var disposable in disposeables) {
+                disposable?.Dispose();
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using VideoServer.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -13,30 +14,39 @@ namespace VideoServer.Server.Controllers
     [Route("api/")]
     public class VideoController : Controller
     {
-        private const string RootFolder = @"D:\Movies\SpongebobMkv";
+        private readonly string BaseFolder;
+
+        public VideoController(IConfiguration conf) {
+            BaseFolder = conf["base_folder"];
+        }
 
         [HttpGet("video/{season}/{episode}")]
         public async Task<IActionResult> GetVideo(int season, string episode, float start = 0, float duration = 20)
         {
-            int episodeMajor = int.Parse(episode.Remove(episode.Length - 1));
-            char episodeMinor = episode[episode.Length - 1];
-            string episodePath = Path.Join(RootFolder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{episodeMinor}.mkv");
-
-            var result = await new VideoStream(episodePath, start - 10, duration).ReadToStream();
-
-            return File(result, "video/x-msvideo");
+            var stream = new VideoStream(GetFilePath(season, episode), start - 10, duration);
+            Response.RegisterForDispose(stream);
+            return File(await stream.ReadToStream(), "video/mp4");
         }
         
         [HttpGet("thumbnail/{season}/{episode}")]
-        public IActionResult GetThumbnail(int season, string episode, float timestamp=2)
+        public async Task<IActionResult> GetThumbnail(int season, string episode, float timestamp=2)
         {
-            int episodeMajor = int.Parse(episode.Remove(episode.Length - 1));
-            char episodeMinor = episode[episode.Length - 1];
-            string episodePath = Path.Join(RootFolder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{episodeMinor}.mkv");
-
-            var result = new VideoStream(episodePath, timestamp, 0).GetThumbnail();
-
-            return File(result, "image/jpeg");
+            var stream = new VideoStream(GetFilePath(season, episode), timestamp, 0);
+            Response.RegisterForDispose(stream);
+            return File(await stream.GetThumbnail(), "image/jpeg");
         }
+
+        public string GetFilePath(int season, string episode) {
+            char episodeMinor = episode[episode.Length - 1];
+            int episodeMajor;
+            if (char.IsLetter(episodeMinor)) {
+                episodeMajor = int.Parse(episode.Remove(episode.Length - 1));
+                return Path.Join(BaseFolder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{episodeMinor}.mkv");
+            } else {
+                episodeMajor = int.Parse(episode);
+                return Path.Join(BaseFolder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}.mkv");
+            }
+        }
+
     }
 }
