@@ -15,28 +15,31 @@ namespace VideoServer.Server.Controllers
     public class VideoController : Controller
     {
         private readonly string BaseFolder;
+        private readonly IVideoStream stream;
 
-        public VideoController(IConfiguration conf) {
-            BaseFolder = conf["base_folder"];
+        public VideoController(IConfiguration conf, IVideoStream stream) {
+            BaseFolder = conf[SettingKeys.BASE_FOLDER];
+            this.stream = stream;
         }
 
         [HttpGet("video/{season}/{episode}")]
         public async Task<IActionResult> GetVideo(int season, string episode, float start = 0, float duration = 20)
         {
-            var stream = new VideoStream(GetFilePath(season, episode), start - 10, duration);
-            Response.RegisterForDispose(stream);
+            stream.FilePath = GetFilePath(season, episode);
+            stream.Start = start;
+            stream.Duration = duration;
             return File(await stream.ReadToStream(), "video/mp4");
         }
         
         [HttpGet("thumbnail/{season}/{episode}")]
         public async Task<IActionResult> GetThumbnail(int season, string episode, float timestamp=2)
         {
-            var stream = new VideoStream(GetFilePath(season, episode), timestamp, 0);
-            Response.RegisterForDispose(stream);
+            stream.FilePath = GetFilePath(season, episode);
+            stream.Start = timestamp;
             return File(await stream.GetThumbnail(), "image/jpeg");
         }
 
-        public string GetFilePath(int season, string episode) {
+        private string GetFilePath(int season, string episode) {
             char episodeMinor = episode[episode.Length - 1];
             int episodeMajor;
             if (char.IsLetter(episodeMinor)) {

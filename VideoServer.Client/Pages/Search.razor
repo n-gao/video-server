@@ -1,5 +1,6 @@
 ﻿@page "/search"
 @using VideoServer.Shared
+@using VideoServer.Shared.Models
 @inject HttpClient Http
 
 <h1>Search</h1>
@@ -38,16 +39,16 @@ else
             @foreach (var result in results)
             {
                 <tr>
-                    <td><img class="img-thumbnail" src="api/thumbnail/@result.Season/@result.EpisodeNumber?timestamp=@result.Start" /></td>
-                    <td>@result.Episode <br /> @result.EpisodeTitle</td>
+                    <td><img class="img-thumbnail" src="api/thumbnail/@result.Season/@result.EpisodeNumber?timestamp=@result.TimeStamp" /></td>
+                    <td>@result.EpisodeName</td>
                     <td>@result.Text</td>
-                    <td>@String.Format("{0:0.##}", result.Score)</td>
-                    <td><a href="api/video/@result.Season/@result.EpisodeNumber?start=@(result.Start+query.Skip)&duration=@query.Duration" target="_blank" download="clip.mp4">Download</a></td>
+                    <td>@String.Format("{0:0.##}", result.MatchingScore)</td>
+                    <td><a href="api/video/@result.Season/@result.EpisodeNumber?start=@(result.TimeStamp+query.Skip)&duration=@query.Duration" target="_blank" download="clip.mp4">Download</a></td>
                     <td>
                         @if (result.Stream)
                         {
                             <video controls>
-                                <source src="api/video/@result.Season/@result.EpisodeNumber?start=@(result.Start+query.Skip)&duration=@query.Duration" />
+                                <source src="api/video/@result.Season/@result.EpisodeNumber?start=@(result.TimeStamp+query.Skip)&duration=@query.Duration" />
                             </video>
                         }
                         else
@@ -62,11 +63,11 @@ else
 }
 
 @functions {
-    SearchResult[] results;
+    QuoteResult[] results;
     SearchQuery query = new SearchQuery();
 
     public async Task OnSearchSubmit()
     {
-        results = await Http.GetJsonAsync<SearchResult[]>($"api/search?query={query.Query}");
+        results = await Http.GetJsonAsync<QuoteResult[]>($"api/search?query={query.Query}");
     }
 }
