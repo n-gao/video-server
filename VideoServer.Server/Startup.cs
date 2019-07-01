@@ -39,7 +39,7 @@ namespace VideoServer.Server
 
             services.AddSingleton<DbService>();
 
-            services.AddScoped<IVideoStream, VideoService>();
+            services.AddScoped<IVideoService, VideoService>();
 
             services.AddMemoryCache();
             services.AddMvc().AddNewtonsoftJson();

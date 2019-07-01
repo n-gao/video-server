@@ -11,7 +11,17 @@ using VideoServer.Shared;
 
 namespace VideoServer.Server.Services
 {
-    public class VideoService : IVideoStream
+    public interface IVideoService : IDisposable
+    {
+        string FilePath { get; set; }
+        float Start { get; set; }
+        float Duration { get; set; }
+
+        Task<Stream> ReadToStream();
+
+        Task<FileStream> GetThumbnail();
+    }
+    public class VideoService : IVideoService
     {
         private static string FFMpeg => Environment.OSVersion.Platform == PlatformID.Win32NT ? "ffmpeg.exe" : "ffmpeg";
 
