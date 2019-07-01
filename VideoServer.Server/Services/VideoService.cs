@@ -13,21 +13,14 @@ namespace VideoServer.Server.Services
 {
     public interface IVideoService : IDisposable
     {
-        string FilePath { get; set; }
-        float Start { get; set; }
-        float Duration { get; set; }
+        Task<Stream> ReadToStream(string filePath, float start, float duration);
 
-        Task<Stream> ReadToStream();
-
-        Task<FileStream> GetThumbnail();
+        Task<FileStream> GetThumbnail(string filePath, float timestamp);
     }
+
     public class VideoService : IVideoService
     {
         private static string FFMpeg => Environment.OSVersion.Platform == PlatformID.Win32NT ? "ffmpeg.exe" : "ffmpeg";
-
-        public string FilePath {get; set;}
-        public float Start {get; set;}
-        public float Duration {get; set;}
 
         private List<IDisposable> disposeables = new List<IDisposable>();
 
@@ -37,7 +30,7 @@ namespace VideoServer.Server.Services
             _config = config;
         }
 
-        public async Task<Stream> ReadToStream()
+        public async Task<Stream> ReadToStream(string filePath, float start, float duration)
         {
             var id = Guid.NewGuid();
             var path = $"/{id}";
@@ -45,11 +38,11 @@ namespace VideoServer.Server.Services
             disposeables.Add(memoryFile);
             using (var p = new Process())
             {
-                var startS = Start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-                var durationS = Duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
                 p.StartInfo.FileName = FFMpeg;
-                p.StartInfo.Arguments = $"-v quiet -i {FilePath} -c:v libx264 -ss {startS} -t {durationS} -f mp4 -y {path}";
+                p.StartInfo.Arguments = $"-v quiet -i {filePath} -c:v libx264 -ss {startS} -t {durationS} -f mp4 -y {path}";
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.RedirectStandardOutput = true;
                 p.Start();
@@ -61,19 +54,20 @@ namespace VideoServer.Server.Services
             return result;
         }
 
-        public async Task<FileStream> GetThumbnail()
+        public async Task<FileStream> GetThumbnail(string filePath, float timestamp)
         {
             var cacheFolder = _config[SettingKeys.CACHE_FOLDER];
-            string cachePath = $"{cacheFolder}/{FilePath.ToSHA256()}_{Start}.jpg";
+            string cachePath = $"{cacheFolder}/{filePath.ToSHA256()}_{timestamp}.jpg";
 
             if (!File.Exists(cachePath))
             {
                 using (var p = new Process())
                 {
-                    var startS = Start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                    var startS = timestamp.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
                     p.StartInfo.FileName = FFMpeg;
-                    p.StartInfo.Arguments = $"-ss {startS} -v quiet -i \"{FilePath}\" -an -vframes 1 -f image2pipe \"{cachePath}\"";
+                    p.StartInfo.Arguments = $"-ss {startS} -v quiet -i \"{filePath}\" -an -vframes 1 -f image2pipe \"{cachePath}\"";
+                    Console.WriteLine(p.StartInfo.Arguments);
                     p.Start();
                     
                     await Task.Run(() => p.WaitForExit());

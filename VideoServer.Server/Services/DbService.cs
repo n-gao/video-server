@@ -18,12 +18,23 @@ namespace VideoServer.Server.Services {
             _episodes = database.GetCollection<Episode>(settings.EpisodeCollectionName);
         }
 
-        public async Task<IEnumerable<QuoteResult>> SearchQuotes(string query) {
+        public async Task<IEnumerable<QuoteResult>> SearchQuotes(string query, int numResults) {
             var filter = Builders<Quote>.Filter.Text(query, "german");
             var projection = Builders<Quote>.Projection.MetaTextScore("MatchingScore");
             var sort = Builders<Quote>.Sort.MetaTextScore("MatchingScore");
 
-            var result = await _quotes.Find(filter).Project<QuoteResult>(projection).Sort(sort).Limit(10).ToListAsync();
+            var result = await _quotes.Find(filter)
+                .Project<QuoteResult>(projection)
+                .Sort(sort)
+                .Limit(numResults)
+                .ToListAsync();
+
+            var episodeIdx = result.Select(q => q.EpisoodeId);
+            var episodes = (await _episodes.Find(e => episodeIdx.Contains(e.Id)).ToListAsync())
+                .ToDictionary(x => x.Id, x => x);
+
+            result.ForEach(r => r.Episode = episodes[r.EpisoodeId]);
+
             return result;
         }
     }

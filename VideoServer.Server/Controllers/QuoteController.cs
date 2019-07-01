@@ -24,9 +24,11 @@ namespace VideoServer.Server.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<IEnumerable<QuoteResult>> GetSearchResults(string query)
+        public async Task<IEnumerable<QuoteResult>> GetSearchResults(string query, int numResults=10)
         {
-            return await _quotes.SearchQuotes(query);
+            numResults = numResults > 20 ? 20 : numResults;
+            numResults = numResults < 1 ? 1 : numResults;
+            return await _quotes.SearchQuotes(query, numResults);
         } 
 
     }

@@ -40,7 +40,12 @@ else
             {
                 <tr>
                     <td><img class="img-thumbnail" src="api/thumbnail/@result.Season/@result.EpisodeNumber?timestamp=@result.TimeStamp" /></td>
-                    <td>@result.EpisodeName</td>
+                    <td>@result.EpisoodeId <br />
+                        @if (result.Episode != null)
+                        {
+                            @result.Episode.Title
+                        }
+                    </td>
                     <td>@result.Text</td>
                     <td>@String.Format("{0:0.##}", result.MatchingScore)</td>
                     <td><a href="api/video/@result.Season/@result.EpisodeNumber?start=@(result.TimeStamp+query.Skip)&duration=@query.Duration" target="_blank" download="clip.mp4">Download</a></td>

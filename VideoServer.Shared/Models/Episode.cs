@@ -12,8 +12,10 @@ namespace VideoServer.Shared.Models
         [BsonRepresentation(BsonType.String)]
         public string Id { get; set; }
 
+        [BsonElement("title")]
         public string Title { get; set; }
 
+        [BsonElement("season")]
         public int Season { get; set; }
 
         [BsonElement("episode")]

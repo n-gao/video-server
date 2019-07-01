@@ -28,18 +28,13 @@ namespace VideoServer.Server.Controllers
         [HttpGet("video/{season}/{episode}")]
         public async Task<IActionResult> GetVideo(int season, string episode, float start = 0, float duration = 20)
         {
-            videoService.FilePath = GetFilePath(season, episode);
-            videoService.Start = start;
-            videoService.Duration = duration;
-            return File(await videoService.ReadToStream(), "video/mp4");
+            return File(await videoService.ReadToStream(GetFilePath(season, episode), start, duration), "video/mp4");
         }
         
         [HttpGet("thumbnail/{season}/{episode}")]
         public async Task<IActionResult> GetThumbnail(int season, string episode, float timestamp=2)
         {
-            videoService.FilePath = GetFilePath(season, episode);
-            videoService.Start = timestamp;
-            return File(await videoService.GetThumbnail(), "image/jpeg");
+            return File(await videoService.GetThumbnail(GetFilePath(season, episode), timestamp), "image/jpeg");
         }
 
         private string GetFilePath(int season, string episode) {
