@@ -4,7 +4,8 @@
 <div class="col-xl-3 col-lg-5 col-md-9 result-card">
     @if (!data.Stream)
     {
-        <a onclick="@(() => data.Stream = true)">
+        <a class="video-thumbnail" onclick="@(() => data.Stream = true)">
+            <span class="oi oi-play-circle" aria-hidden="true"></span>
             <img class="img-thumbnail" src="api/thumbnail/@data.Season/@data.EpisodeNumber?timestamp=@data.TimeStamp" />
         </a>
     }

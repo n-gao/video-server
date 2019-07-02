@@ -6,29 +6,25 @@
 <h1>Search</h1>
 
 <EditForm Model="@query" OnValidSubmit="@OnSearchSubmit">
+    <div class="form-group">
+        <label for="input-query">Query</label>
+        <input id="input-query" class="form-control" bind="@query.Query" placeholder="Search text..."/>
+    </div>
     <div class="form-row">
-        <div class="cold-md-12 form-group">
-            <label for="input-query">Query</label>
-            <InputText id="input-query" class="form-control" bind-Value="@query.Query" placeholder="Search text..."/>
+        <div class="col-md-6 form-group range-wrapper">
+            <label for="range-skip">Skip @(query.Skip)s</label>
+            <input id="range-skip" class="form-control-range" oninput="@SkipChanged" type="range" bind="@query.Skip" min="@MIN_SKIP" max="@MAX_SKIP"/>
         </div>
-        <div class="col-md-4 form-group">
-            <label for="range-skip">Skip @query.Skip s</label>
-            <input id="range-skip" class="form-control-range" type="range" bind="@query.Skip" min="-60" max="60">
-        </div>
-        <div class="col-md-4 form-group">
-            <label for="range-duration">Duration @query.Duration s</label>
-            <input id="range-duration" class="form-control-range" type="range" bind="@query.Duration" min="5" max="60">
+        <div class="col-md-6 form-group">
+            <label for="range-duration">Duration @(query.Duration)s</label>
+            <input id="range-duration" class="form-control-range" oninput="@DurationChanged" type="range" bind="@query.Duration" min="@MIN_DURATION" max="@MAX_DURATION"/>
         </div>
     </div>
     <button class="btn btn-primary" type="submit">Search</button>
 </EditForm>
 
 
-@if (results == null)
-{
-    <p>Waiting for query...</p>
-}
-else
+@if (results != null) 
 {
     <div class="row">
         @foreach (var result in results)
@@ -42,8 +38,37 @@ else
     QuoteResult[] results;
     SearchQuery query = new SearchQuery();
 
-    public async Task OnSearchSubmit()
-    {
+    const float MIN_SKIP = -60;
+    const float MAX_SKIP = 60;
+
+    const float MIN_DURATION = 5;
+    const float MAX_DURATION = 60;
+
+
+    private float SkipPerc { get => (query.Skip - MIN_SKIP) / (MAX_SKIP - MIN_SKIP) * 95 + 2.5f; }
+    private float DurationPerc { get => (query.Duration - MIN_DURATION) / (MAX_DURATION - MIN_DURATION) * 95+2.5f; }
+
+    private void SkipChanged(UIChangeEventArgs args) {
+        string valueString = args.Value as string;
+        if (valueString != null) {
+            float value;
+            if (float.TryParse(valueString, out value)) {
+                query.Skip = value;
+            }
+        }
+    }
+
+    private void DurationChanged(UIChangeEventArgs args) {
+        string valueString = args.Value as string;
+        if (valueString != null) {
+            float value;
+            if (float.TryParse(valueString, out value)) {
+                query.Duration = value;
+            }
+        }
+    }
+
+    public async Task OnSearchSubmit() {
         results = await Http.GetJsonAsync<QuoteResult[]>($"api/search?query={query.Query}");
     }
 }

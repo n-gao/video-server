@@ -43,7 +43,7 @@ namespace VideoServer.Server.Services
                     var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
                     p.StartInfo.FileName = FFMpeg;
-                    p.StartInfo.Arguments = $" -i {filePath} -c:v libx264 -ss {startS} -t {durationS} -f mp4 -y {cacheFile}";
+                    p.StartInfo.Arguments = $" -i {filePath} -c:v libx264 -preset ultrafast -tune animation -ss {startS} -t {durationS} -f mp4 -y {cacheFile}";
                     p.StartInfo.UseShellExecute = false;
                     p.StartInfo.RedirectStandardOutput = true;
                     p.Start();
