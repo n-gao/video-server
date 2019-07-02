@@ -40,10 +40,10 @@ namespace VideoServer.Server.Controllers
             int episodeMajor;
             if (char.IsLetter(episodeMinor)) {
                 episodeMajor = int.Parse(episode.Remove(episode.Length - 1));
-                return Path.Join(config.Folder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{episodeMinor}{config.Format}");
+                return Path.Join(config.Folder, $"s{season:0#}",$"s{season:0#}e{episodeMajor:0#}{episodeMinor}{config.Format}");
             } else {
                 episodeMajor = int.Parse(episode);
-                return Path.Join(config.Folder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{config.Format}");
+                return Path.Join(config.Folder, $"s{season:0#}",$"s{season:0#}e{episodeMajor:0#}{config.Format}");
             }
         }
 
