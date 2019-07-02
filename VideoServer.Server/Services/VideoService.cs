@@ -37,7 +37,6 @@ namespace VideoServer.Server.Services
             cacheFile = cacheFile.Replace(',', '-');
 
             if (!File.Exists(cacheFile)) {
-                Console.WriteLine(cacheFile);
                 using (var p = new Process())
                 {
                     var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
@@ -60,6 +59,7 @@ namespace VideoServer.Server.Services
         public async Task<FileStream> GetThumbnail(string filePath, float timestamp)
         {
             CheckCacheSize();
+            Console.WriteLine(filePath);
             string cachePath = $"{settings.Folder}/{filePath.ToSHA256()}_{timestamp}.jpg";
 
             if (!File.Exists(cachePath))

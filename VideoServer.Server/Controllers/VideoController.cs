@@ -20,9 +20,6 @@ namespace VideoServer.Server.Controllers
 
         public VideoController(IVideoSettings conf, IVideoService videoService) {
             config = conf;
-            Console.WriteLine("test");
-            Console.WriteLine(conf.Folder);
-            Console.WriteLine(conf.Format);
             this.videoService = videoService;
         }
 
