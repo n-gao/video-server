@@ -6,15 +6,21 @@
 <h1>Search</h1>
 
 <EditForm Model="@query" OnValidSubmit="@OnSearchSubmit">
-    <InputText Id="query" bind-Value="@query.Query" /><br />
-
-    <span>Skip:</span>
-    <input type="number" bind="@query.Skip" min="-60" max="60"/><br />
-
-    <span>Duration:</span>
-    <input type="number" bind="@query.Duration" min="5" max="60"/><br />
-
-    <button type="submit">Search</button>
+    <div class="form-row">
+        <div class="cold-md-12 form-group">
+            <label for="input-query">Query</label>
+            <InputText id="input-query" class="form-control" bind-Value="@query.Query" placeholder="Search text..."/>
+        </div>
+        <div class="col-md-4 form-group">
+            <label for="range-skip">Skip @query.Skip s</label>
+            <input id="range-skip" class="form-control-range" type="range" bind="@query.Skip" min="-60" max="60">
+        </div>
+        <div class="col-md-4 form-group">
+            <label for="range-duration">Duration @query.Duration s</label>
+            <input id="range-duration" class="form-control-range" type="range" bind="@query.Duration" min="5" max="60">
+        </div>
+    </div>
+    <button class="btn btn-primary" type="submit">Search</button>
 </EditForm>
 
 
