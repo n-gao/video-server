@@ -133,3 +133,18 @@ app {
         display: block;
     }
 }
+
+.result-card {
+    border: 1px solid rgb(238, 238, 238);
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.16);
+    padding: 16px;
+    margin: 16px;
+}
+
+.result-card a>img {
+    transition: filter 0.4s;
+}
+
+.result-card a>img:hover {
+    filter: blur(4px);
+}

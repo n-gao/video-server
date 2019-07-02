@@ -24,40 +24,43 @@ namespace VideoServer.Server.Services
 
         private List<IDisposable> disposeables = new List<IDisposable>();
 
-        private IConfiguration _config;
+        private ICacheSettings settings;
 
-        public VideoService(IConfiguration config) {
-            _config = config;
+        public VideoService(ICacheSettings settings) {
+            this.settings = settings;
         }
 
         public async Task<Stream> ReadToStream(string filePath, float start, float duration)
         {
-            var id = Guid.NewGuid();
-            var path = $"/{id}";
-            var memoryFile = MemoryMappedFile.CreateNew(path, 1024 * 128, MemoryMappedFileAccess.ReadWrite);
-            disposeables.Add(memoryFile);
-            using (var p = new Process())
-            {
-                var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-                var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            CheckCacheSize();
+            var cacheFile = Path.Join(settings.Folder, $"{filePath.ToSHA256()}_{start}_{duration}.mp4");
+            cacheFile = cacheFile.Replace(',', '-');
 
-                p.StartInfo.FileName = FFMpeg;
-                p.StartInfo.Arguments = $"-v quiet -i {filePath} -c:v libx264 -ss {startS} -t {durationS} -f mp4 -y {path}";
-                p.StartInfo.UseShellExecute = false;
-                p.StartInfo.RedirectStandardOutput = true;
-                p.Start();
+            if (!File.Exists(cacheFile)) {
+                Console.WriteLine(cacheFile);
+                using (var p = new Process())
+                {
+                    var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                    var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-                await Task.Run(() => p.WaitForExit());
+                    p.StartInfo.FileName = FFMpeg;
+                    p.StartInfo.Arguments = $" -i {filePath} -c:v libx264 -ss {startS} -t {durationS} -f mp4 -y {cacheFile}";
+                    p.StartInfo.UseShellExecute = false;
+                    p.StartInfo.RedirectStandardOutput = true;
+                    p.Start();
+
+                    await Task.Run(() => p.WaitForExit());
+                }
             }
-            var result = new FileStream(path, FileMode.Open);
+            var result = new FileStream(cacheFile, FileMode.Open);
             disposeables.Add(result);
             return result;
         }
 
         public async Task<FileStream> GetThumbnail(string filePath, float timestamp)
         {
-            var cacheFolder = _config[SettingKeys.CACHE_FOLDER];
-            string cachePath = $"{cacheFolder}/{filePath.ToSHA256()}_{timestamp}.jpg";
+            CheckCacheSize();
+            string cachePath = $"{settings.Folder}/{filePath.ToSHA256()}_{timestamp}.jpg";
 
             if (!File.Exists(cachePath))
             {
@@ -66,8 +69,7 @@ namespace VideoServer.Server.Services
                     var startS = timestamp.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
                     p.StartInfo.FileName = FFMpeg;
-                    p.StartInfo.Arguments = $"-ss {startS} -v quiet -i \"{filePath}\" -an -vframes 1 -f image2pipe \"{cachePath}\"";
-                    Console.WriteLine(p.StartInfo.Arguments);
+                    p.StartInfo.Arguments = $"-ss {startS} -i \"{filePath}\" -an -vframes 1 -f image2pipe \"{cachePath}\"";
                     p.Start();
                     
                     await Task.Run(() => p.WaitForExit());
@@ -76,6 +78,21 @@ namespace VideoServer.Server.Services
             var result = new FileStream(cachePath, FileMode.Open);
             disposeables.Add(result);
             return result;
+        }
+
+        private void CheckCacheSize() {
+            if (!Directory.Exists(settings.Folder)) {
+                Directory.CreateDirectory(settings.Folder);
+                return;
+            }
+            if (Directory.GetFiles(settings.Folder).Length > settings.Size) {
+                var files = new DirectoryInfo(settings.Folder).GetFiles().OrderBy(x => x.LastAccessTime).ToList();
+                var l = files.Count;
+                int i = 0;
+                while (l-i > settings.Size) {
+                    File.Delete(files[i++].FullName);
+                }
+            }
         }
 
         public void Dispose()

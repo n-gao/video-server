@@ -15,13 +15,14 @@ namespace VideoServer.Server.Controllers
     [Route("api/")]
     public class VideoController : Controller
     {
-        private string fileFormat => config[SettingKeys.VIDEO_FORMAT];
-        private string baseFolder => config[SettingKeys.BASE_FOLDER];
-        private readonly IConfiguration config;
+        private readonly IVideoSettings config;
         private readonly IVideoService videoService;
 
-        public VideoController(IConfiguration conf, IVideoService videoService) {
+        public VideoController(IVideoSettings conf, IVideoService videoService) {
             config = conf;
+            Console.WriteLine("test");
+            Console.WriteLine(conf.Folder);
+            Console.WriteLine(conf.Format);
             this.videoService = videoService;
         }
 
@@ -42,10 +43,10 @@ namespace VideoServer.Server.Controllers
             int episodeMajor;
             if (char.IsLetter(episodeMinor)) {
                 episodeMajor = int.Parse(episode.Remove(episode.Length - 1));
-                return Path.Join(baseFolder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{episodeMinor}{fileFormat}");
+                return Path.Join(config.Folder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{episodeMinor}{config.Format}");
             } else {
                 episodeMajor = int.Parse(episode);
-                return Path.Join(baseFolder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{fileFormat}");
+                return Path.Join(config.Folder, $"s{season:0#}\\s{season:0#}e{episodeMajor:0#}{config.Format}");
             }
         }
 

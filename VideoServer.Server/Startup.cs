@@ -23,11 +23,6 @@ namespace VideoServer.Server
 
         public Startup(IConfiguration config) {
             _configuration = config;
-
-            if (Directory.Exists(_configuration[SettingKeys.CACHE_FOLDER])) {
-                Directory.Delete(_configuration[SettingKeys.CACHE_FOLDER], true);
-            }
-            Directory.CreateDirectory(_configuration[SettingKeys.CACHE_FOLDER]);
         }
 
         // This method gets called by the runtime. Use this method to add services to the container.
@@ -36,6 +31,12 @@ namespace VideoServer.Server
         {
             services.Configure<DatabaseSettings>(_configuration.GetSection(nameof(DatabaseSettings)));
             services.AddSingleton<IDatabaseSettings>(sp => sp.GetRequiredService<IOptions<DatabaseSettings>>().Value);
+
+            services.Configure<CacheSettings>(_configuration.GetSection(nameof(CacheSettings)));
+            services.AddSingleton<ICacheSettings>(sp => sp.GetRequiredService<IOptions<CacheSettings>>().Value);
+
+            services.Configure<VideoSettings>(_configuration.GetSection(nameof(VideoSettings)));
+            services.AddSingleton<IVideoSettings>(sp => sp.GetRequiredService<IOptions<VideoSettings>>().Value);
 
             services.AddSingleton<DbService>();
 

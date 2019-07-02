@@ -1,0 +1,30 @@
+@using VideoServer.Shared;
+@using VideoServer.Shared.Models
+
+<div class="col-xl-3 col-lg-5 col-md-9 result-card">
+    @if (!data.Stream)
+    {
+        <a onclick="@(() => data.Stream = true)">
+            <img class="img-thumbnail" src="api/thumbnail/@data.Season/@data.EpisodeNumber?timestamp=@data.TimeStamp" />
+        </a>
+    }
+    else
+    {
+        <video class="img-thumbnail" controls autoplay>
+            <source src="api/video/@data.Season/@data.EpisodeNumber?start=@(data.TimeStamp+skip)&duration=@duration" />
+        </video>
+    }
+    <h3>@data.Episode.Title</h3>
+    <p>@data.Text</p>
+    <div class="align-bottom">
+        <a class="btn btn-outline-primary" href="api/video/@data.Season/@data.EpisodeNumber?start=@(data.TimeStamp+skip)&duration=@duration"
+           target="_blank" download="clip.mp4">Download</a>
+        <span>@String.Format("{0:00}:{1:00}", (int)(data.TimeStamp / 60), ((int)data.TimeStamp) % 60) @@ @data.EpisoodeId</span>
+    </div>
+</div>
+
+@functions {
+    [Parameter] QuoteResult data { get; set; }
+    [Parameter] float skip { get; set; }
+    [Parameter] float duration { get; set; }
+}
