@@ -7,7 +7,7 @@ namespace VideoServer.Shared
     public class SearchQuery
     {
         public string Query { get; set; }
-        public float Duration { get; set; } = 30;
+        public float Duration { get; set; } = 40;
         public float Skip { get; set; } = -10;
     }
 }

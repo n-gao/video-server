@@ -41,7 +41,6 @@ namespace VideoServer.Server.Services
 
                 p.StartInfo.FileName = FFProbe;
                 p.StartInfo.Arguments = $"-v quiet -select_streams v -show_frames -show_entries frame=pkt_pts,pkt_pts_time -skip_frame nokey -read_intervals {t.Hours}:{t.Minutes}:{t.Seconds}.{t.Milliseconds}%+20 -of csv -i {filePath}";
-                Console.WriteLine(p.StartInfo.Arguments);
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.RedirectStandardOutput = true;
                 p.Start();
@@ -66,28 +65,51 @@ namespace VideoServer.Server.Services
             }
         }
 
-        public async Task<Stream> ReadToStream(string filePath, float start, float duration)
-        {
+        private async Task<string> GetSegment(string filePath, float start, float duration, float tolerance=10) {
             CheckCacheSize();
             var cacheFile = Path.Join(settings.Folder, $"{filePath.ToSHA256()}_{start}_{duration}.mp4");
             cacheFile = cacheFile.Replace(',', '-');
 
-            if (!File.Exists(cacheFile)) {
-                int startFrame = await GetClosestKeyframe(filePath, start);
+            if (File.Exists(cacheFile))
+                return cacheFile;
 
-                using (var p = new Process())
-                {
-                    var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-                    var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            var cacheFolder = Path.Join(settings.Folder, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(cacheFolder);
 
-                    p.StartInfo.FileName = FFMpeg;
-                    p.StartInfo.Arguments = $"-v quiet -i {filePath} -c copy -start_number {startFrame} -t {durationS} -f mp4 -y {cacheFile}";
-                    Console.WriteLine(p.StartInfo.Arguments);
-                    p.Start();
+            using (var p = new Process()) {
+                var startS = (start-tolerance).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-                    await Task.Run(() => p.WaitForExit());
-                }
+                p.StartInfo.FileName = FFMpeg;
+                p.StartInfo.Arguments = $"-v quiet -i {filePath} -c copy -ss {startS} -t {durationS} -f segment -y {Path.Join(cacheFolder, "seg%d.mp4")}";
+                p.Start();
+
+                await Task.Run(() => p.WaitForExit());
             }
+
+            var files = Directory.GetFiles(cacheFolder);
+            var listFile = Path.Join(cacheFolder, "list.txt");
+            var strBuilder = new StringBuilder();
+            foreach(var f in files.Skip(1)) {
+                strBuilder.Append($"file \'{Path.GetFullPath(f)}\'\n");
+            }
+            File.WriteAllText(listFile, strBuilder.ToString());
+
+            using(var p = new Process()) {
+                p.StartInfo.FileName = FFMpeg;
+                p.StartInfo.Arguments = $"-f concat -safe 0 -i {listFile} -c copy {cacheFile}";
+                p.Start();
+                Console.WriteLine(p.StartInfo.Arguments);
+
+                await Task.Run(() => p.WaitForExit());
+            }
+            Directory.Delete(cacheFolder, true);
+            return cacheFile;
+        }
+
+        public async Task<Stream> ReadToStream(string filePath, float start, float duration)
+        {
+            var cacheFile = await GetSegment(filePath, start, duration);
             var result = new FileStream(cacheFile, FileMode.Open);
             disposeables.Add(result);
             return result;
