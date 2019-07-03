@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
@@ -21,13 +23,47 @@ namespace VideoServer.Server.Services
     public class VideoService : IVideoService
     {
         private static string FFMpeg => Environment.OSVersion.Platform == PlatformID.Win32NT ? "ffmpeg.exe" : "ffmpeg";
+        private static string FFProbe => Environment.OSVersion.Platform == PlatformID.Win32NT ? "ffprobe.exe" : "ffprobe";
 
         private List<IDisposable> disposeables = new List<IDisposable>();
 
         private ICacheSettings settings;
 
+        private char[] charBuffer = new char[4096];
+
         public VideoService(ICacheSettings settings) {
             this.settings = settings;
+        }
+
+        private async Task<int> GetClosestKeyframe(string filePath, float start) {
+            using (var p = new Process()) {
+                var t = TimeSpan.FromSeconds(start-10);
+
+                p.StartInfo.FileName = FFProbe;
+                p.StartInfo.Arguments = $"-v quiet -select_streams v -show_frames -show_entries frame=pkt_pts,pkt_pts_time -skip_frame nokey -read_intervals {t.Hours}:{t.Minutes}:{t.Seconds}.{t.Milliseconds}%+20 -of csv -i {filePath}";
+                Console.WriteLine(p.StartInfo.Arguments);
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.RedirectStandardOutput = true;
+                p.Start();
+
+                var outputBuilder = new StringBuilder();
+                int read = 1;
+                while(read > 0) {
+                    read = await p.StandardOutput.ReadAsync(charBuffer, 0, charBuffer.Length);
+                    outputBuilder.Append(charBuffer.Take(read).ToArray());
+                }
+                var outputString = outputBuilder.ToString();
+                Console.WriteLine(outputString);
+                var results = outputString.Split('\n').Select(s => {
+                    var parts = s.Split(',');
+                    if (parts.Length < 3) {
+                        return (-1, float.MaxValue);
+                    }
+                    return (int.Parse(parts[1]), float.Parse(parts[2], CultureInfo.InvariantCulture.NumberFormat));
+                });
+                (int frame, float time) = results.OrderBy(a => Math.Abs(a.Item2-start)).First();
+                return frame;
+            }
         }
 
         public async Task<Stream> ReadToStream(string filePath, float start, float duration)
@@ -37,15 +73,16 @@ namespace VideoServer.Server.Services
             cacheFile = cacheFile.Replace(',', '-');
 
             if (!File.Exists(cacheFile)) {
+                int startFrame = await GetClosestKeyframe(filePath, start);
+
                 using (var p = new Process())
                 {
                     var startS = start.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
                     var durationS = duration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
                     p.StartInfo.FileName = FFMpeg;
-                    p.StartInfo.Arguments = $" -i {filePath} -c:v libx264 -preset ultrafast -tune animation -ss {startS} -t {durationS} -f mp4 -y {cacheFile}";
-                    p.StartInfo.UseShellExecute = false;
-                    p.StartInfo.RedirectStandardOutput = true;
+                    p.StartInfo.Arguments = $"-v quiet -i {filePath} -c copy -start_number {startFrame} -t {durationS} -f mp4 -y {cacheFile}";
+                    Console.WriteLine(p.StartInfo.Arguments);
                     p.Start();
 
                     await Task.Run(() => p.WaitForExit());
