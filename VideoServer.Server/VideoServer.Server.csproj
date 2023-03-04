@@ -20,7 +20,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="3.0.0-preview6.19304.6" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="3.0.0-preview6-19313-05" />
-    <PackageReference Include="MongoDB.Driver" Version="2.8.1" />
+    <PackageReference Include="MongoDB.Driver" Version="2.19.0" />
   </ItemGroup>
 
   <ItemGroup>
